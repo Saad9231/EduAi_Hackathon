@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-urdu: var(--font-noto-nastaliq), ui-sans-serif, system-ui, sans-serif;
+  
+  --color-slate-950: #0F172A;
+  --color-sky-500: #0EA5E9;
+  --color-sky-600: #0284C7;
+  
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@layer utilities {
+  .glass-panel {
+    @apply bg-slate-900/75 backdrop-blur-md border border-slate-700/50 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/30 rounded-2xl shadow-lg;
+  }
+  
+  .text-urdu {
+    @apply font-urdu text-right leading-loose tracking-wide;
+  }
+
+  .neon-text-blue {
+    @apply text-sky-400 drop-shadow-[0_0_8px_rgba(14,165,233,0.8)];
+  }
+
+  .neon-border-blue {
+    @apply border-sky-500/50 shadow-[0_0_15px_rgba(14,165,233,0.2)];
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0F172A;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0F172A;
+    --foreground: #f8fafc;
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom Scrollbar for chat interfaces */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }

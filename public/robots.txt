@@ -1,0 +1,7 @@
+# EduAI Robots.txt
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /api/
+
+Sitemap: https://eduai.pk/sitemap.xml
