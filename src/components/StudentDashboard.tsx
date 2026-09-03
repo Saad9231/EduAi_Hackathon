@@ -294,7 +294,7 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
                 onClick={() => setShowQuizModal(false)} // In a real app, this routes to the Smart Quiz tab
                 className="flex-1 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold transition-all shadow-[0_0_20px_rgba(14,165,233,0.3)] flex items-center justify-center gap-2"
               >
-                <Play className="w-4 h-4 fill-current" /> Let's Go
+                <Play className="w-4 h-4 fill-current" /> Let&apos;s Go
               </button>
             </div>
           </div>

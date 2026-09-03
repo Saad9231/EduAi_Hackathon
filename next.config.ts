@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow network IP access during development
+  allowedDevOrigins: ['10.162.102.121'],
+
   // Enable standalone output for Docker-optimized builds (~150MB image)
   output: "standalone",
 

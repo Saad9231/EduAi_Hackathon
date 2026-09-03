@@ -6,36 +6,41 @@ import Navbar from "@/components/Navbar";
 import StudentDashboard from "@/components/StudentDashboard";
 import AITutorChat from "@/components/AITutorChat";
 import SmartQuizGenerator from "@/components/SmartQuizGenerator";
+import AINotesGenerator from "@/components/AINotesGenerator";
+import AssignmentViewer from "@/components/AssignmentViewer";
+import FlashcardsViewer from "@/components/FlashcardsViewer";
+import DigitalLibrary from "@/components/DigitalLibrary";
+import AdminDashboard from "@/components/AdminDashboard";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import ParentDashboard from "@/components/ParentDashboard";
-import { LayoutDashboard, MessageSquare, BookOpenCheck, Users, HeartHandshake, LogOut } from "lucide-react";
+import { LayoutDashboard, MessageSquare, BookOpenCheck, Users, HeartHandshake, LogOut, FileText, ClipboardCheck, Layers, Library, Shield } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("student");
   const [language, setLanguage] = useState<"EN" | "UR">("EN");
   const [role, setRole] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
     const savedRole = localStorage.getItem("eduai_role");
     if (!savedRole) {
       router.push("/auth");
-    } else {
-      setRole(savedRole);
-      // Set default tab based on role
-      if (savedRole === "teacher") setActiveTab("teacher");
-      if (savedRole === "parent") setActiveTab("parent");
-      if (savedRole === "student") setActiveTab("student");
+      return;
     }
-  }, [router]);
+    setRole(savedRole);
+    if (savedRole === "teacher") setActiveTab("teacher");
+    else if (savedRole === "parent") setActiveTab("parent");
+    else if (savedRole === "admin") setActiveTab("admin");
+    else setActiveTab("student");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!isClient || !role) {
+  if (!role) {
     return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
     </div>;
   }
+
 
   const handleLogout = () => {
     localStorage.removeItem("eduai_role");
@@ -46,8 +51,13 @@ export default function Home() {
     { id: "student", label: "Student Hub", icon: LayoutDashboard, roles: ["student"] },
     { id: "tutor", label: "AI Tutor", icon: MessageSquare, roles: ["student", "teacher"] },
     { id: "quiz", label: "Smart Quiz", icon: BookOpenCheck, roles: ["student"] },
+    { id: "notes", label: "Smart Notes", icon: FileText, roles: ["student", "teacher"] },
+    { id: "flashcards", label: "Flashcards", icon: Layers, roles: ["student"] },
+    { id: "assignments", label: "Assignments", icon: ClipboardCheck, roles: ["student"] },
+    { id: "library", label: "Digital Library", icon: Library, roles: ["student", "teacher", "parent"] },
     { id: "teacher", label: "Teacher Portal", icon: Users, roles: ["teacher"] },
     { id: "parent", label: "Parent Tracker", icon: HeartHandshake, roles: ["parent"] },
+    { id: "admin", label: "Admin Panel", icon: Shield, roles: ["admin"] },
   ];
 
   const visibleTabs = allTabs.filter(t => t.roles.includes(role));
@@ -96,8 +106,13 @@ export default function Home() {
             {activeTab === "student" && <StudentDashboard language={language} />}
             {activeTab === "tutor" && <AITutorChat language={language} />}
             {activeTab === "quiz" && <SmartQuizGenerator language={language} />}
+            {activeTab === "notes" && <AINotesGenerator language={language} />}
+            {activeTab === "flashcards" && <FlashcardsViewer language={language} />}
+            {activeTab === "assignments" && <AssignmentViewer language={language} />}
+            {activeTab === "library" && <DigitalLibrary language={language} />}
             {activeTab === "teacher" && <TeacherDashboard language={language} />}
             {activeTab === "parent" && <ParentDashboard language={language} />}
+            {activeTab === "admin" && <AdminDashboard />}
           </div>
         </div>
       </main>

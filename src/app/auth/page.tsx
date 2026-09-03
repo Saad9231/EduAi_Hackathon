@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Users, HeartHandshake, ArrowRight, Bot, Sparkles, Mail, Lock, User, Github, MoveLeft } from "lucide-react";
+import { GraduationCap, Users, HeartHandshake, ArrowRight, Bot, Sparkles, Mail, Lock, User, Github, MoveLeft, Shield } from "lucide-react";
 
-type Role = "student" | "teacher" | "parent" | null;
+type Role = "student" | "teacher" | "parent" | "admin" | null;
 type AuthMode = "role-select" | "signup" | "login";
 
 export default function AuthPage() {
@@ -46,6 +46,15 @@ export default function AuthPage() {
       color: "text-emerald-400",
       bgHover: "hover:bg-emerald-500/10 hover:border-emerald-500/50",
       activeBg: "bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+    },
+    {
+      id: "admin" as Role,
+      title: "Admin",
+      description: "Manage users, subscriptions, and platform settings.",
+      icon: Shield,
+      color: "text-amber-400",
+      bgHover: "hover:bg-amber-500/10 hover:border-amber-500/50",
+      activeBg: "bg-amber-500/20 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
     }
   ];
 
@@ -305,7 +314,7 @@ export default function AuthPage() {
               </div>
 
               <p className="text-center text-sm text-slate-400 mt-8">
-                Don't have an account? <button onClick={() => setMode("role-select")} className="text-sky-400 hover:text-sky-300 font-semibold underline decoration-sky-500/30 underline-offset-4">Sign up</button>
+                Don&apos;t have an account? <button onClick={() => setMode("role-select")} className="text-sky-400 hover:text-sky-300 font-semibold underline decoration-sky-500/30 underline-offset-4">Sign up</button>
               </p>
             </div>
           )}
