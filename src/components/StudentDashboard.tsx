@@ -1,4 +1,5 @@
-import { useState } from 'react';
+"use client";
+import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Timer, Zap, BookOpen, Clock, WifiOff, CalendarDays, CheckCircle2, X, Play, Loader2 } from 'lucide-react';
 
@@ -40,17 +41,65 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
   // State for Quick Actions
   const [showQuizModal, setShowQuizModal] = useState(false);
 
-  const handleGeneratePlan = () => {
+  // Backend Data State
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loadingBackend, setLoadingBackend] = useState(true);
+
+  useEffect(() => {
+    // For MVP demonstration, using a placeholder student_id. 
+    // In a full app, this comes from Supabase Auth session.
+    const fetchDashboard = async () => {
+      try {
+        const res = await fetch('/api/dashboard?student_id=00000000-0000-0000-0000-000000000000');
+        if (res.ok) {
+          const data = await res.json();
+          setDashboardData(data.dashboard);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data', err);
+      } finally {
+        setLoadingBackend(false);
+      }
+    };
+    // Fetch study plan
+    const fetchStudyPlan = async () => {
+      try {
+        const res = await fetch('/api/study-planner?student_id=00000000-0000-0000-0000-000000000000');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.plan?.tasks && Array.isArray(data.plan.tasks) && data.plan.tasks.length > 0) {
+            setTasks(data.plan.tasks);
+          }
+        }
+      } catch {}
+    };
+
+    fetchDashboard();
+    fetchStudyPlan();
+  }, []);
+
+  const handleGeneratePlan = async () => {
     setIsGeneratingPlan(true);
-    // Simulate AI generation delay
-    setTimeout(() => {
-      setTasks(prev => [
-        ...prev.map(t => ({ ...t, status: 'completed' as TaskStatus })),
-        { id: `gen-${Date.now()}-1`, time: "09:00 AM", title: "Review Biology: Cell Structure", subject: "Biology", status: "current", description: "Tomorrow's first task generated based on your past performance." },
-        { id: `gen-${Date.now()}-2`, time: "11:00 AM", title: "Math: Quadratic Equations", subject: "Math", status: "upcoming", description: "Tackling your identified weak areas in Algebra." }
-      ]);
-      setIsGeneratingPlan(false);
-    }, 2000);
+
+    const newTasks: Task[] = [
+      ...tasks.map(t => ({ ...t, status: 'completed' as TaskStatus })),
+      { id: `gen-${Date.now()}-1`, time: "09:00 AM", title: "Review Biology: Cell Structure", subject: "Biology", status: "current", description: "Tomorrow's first task generated based on your past performance." },
+      { id: `gen-${Date.now()}-2`, time: "11:00 AM", title: "Math: Quadratic Equations", subject: "Math", status: "upcoming", description: "Tackling your identified weak areas in Algebra." }
+    ];
+
+    try {
+      await fetch('/api/study-planner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: '00000000-0000-0000-0000-000000000000',
+          tasks: newTasks
+        })
+      });
+    } catch {}
+
+    setTasks(newTasks);
+    setIsGeneratingPlan(false);
   };
 
   return (
@@ -103,7 +152,10 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
                 <BookOpen className="w-5 h-5" />
                 <span className="font-bold">Mastery</span>
               </div>
-              <span className="text-3xl font-bold text-white">78<span className="text-lg text-slate-400 font-normal">%</span></span>
+              <span className="text-3xl font-bold text-white">
+                {dashboardData?.progress?.[0]?.mastery_percentage ?? 78}
+                <span className="text-lg text-slate-400 font-normal">%</span>
+              </span>
             </div>
             
             <div className="glass-card p-4 flex flex-col gap-2">

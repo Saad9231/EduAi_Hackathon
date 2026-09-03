@@ -1,18 +1,64 @@
-import { useState } from 'react';
-import { BookMarked, UploadCloud, CheckCircle2, Clock, Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookMarked, UploadCloud, CheckCircle2, Clock, Play, Loader2 } from 'lucide-react';
 
-const mockAssignments = [
-  { id: 1, title: 'Physics: Force and Motion MCQ', subject: 'Physics', due: 'Tomorrow, 11:59 PM', status: 'pending', type: 'quiz' },
-  { id: 2, title: 'Math: Quadratic Equations Worksheet', subject: 'Math', due: 'Friday, 5:00 PM', status: 'pending', type: 'upload' },
-  { id: 3, title: 'Chemistry: Balancing Equations', subject: 'Chemistry', due: 'Last Week', status: 'completed', type: 'text', score: '8.5/10' },
+const defaultAssignments = [
+  { id: '1', title: 'Physics: Force and Motion MCQ', subject: 'Physics', due: 'Tomorrow, 11:59 PM', status: 'pending', type: 'quiz' },
+  { id: '2', title: 'Math: Quadratic Equations Worksheet', subject: 'Math', due: 'Friday, 5:00 PM', status: 'pending', type: 'upload' },
+  { id: '3', title: 'Chemistry: Balancing Equations', subject: 'Chemistry', due: 'Last Week', status: 'completed', type: 'text', score: '8.5/10' },
 ];
 
 export default function AssignmentViewer({ language }: { language: "EN" | "UR" }) {
   const isUrdu = language === "UR";
   
-  const [activeAssignment, setActiveAssignment] = useState<number | null>(null);
+  const [assignmentsList, setAssignmentsList] = useState<any[]>(defaultAssignments);
+  const [activeAssignment, setActiveAssignment] = useState<string | number | null>(null);
+  const [answerContent, setAnswerContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const assignment = mockAssignments.find(a => a.id === activeAssignment);
+  useEffect(() => {
+    fetch('/api/assignments')
+      .then(res => res.json())
+      .then(data => {
+        if (data.assignments && data.assignments.length > 0) {
+          const formatted = data.assignments.map((a: any) => ({
+            id: a.id,
+            title: a.title,
+            subject: a.subject,
+            due: a.due_date ? new Date(a.due_date).toLocaleDateString() : 'Upcoming',
+            status: 'pending',
+            type: a.type
+          }));
+          setAssignmentsList(formatted);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const assignment = assignmentsList.find(a => String(a.id) === String(activeAssignment));
+
+  const handleSubmit = async () => {
+    if (!assignment) return;
+    setIsSubmitting(true);
+
+    try {
+      await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignment_id: String(assignment.id).length > 10 ? assignment.id : '00000000-0000-0000-0000-000000000000',
+          student_id: '00000000-0000-0000-0000-000000000000',
+          content: answerContent || 'Submitted assignment via portal',
+          status: 'submitted'
+        })
+      });
+    } catch {}
+
+    setAssignmentsList(prev => prev.map(a => String(a.id) === String(assignment.id) ? { ...a, status: 'completed', score: 'Pending Grade' } : a));
+    setIsSubmitting(false);
+    setActiveAssignment(null);
+    setAnswerContent('');
+    alert(isUrdu ? "اسائنمنٹ کامیابی سے جمع ہو گئی ہے!" : "Assignment submitted successfully!");
+  };
 
   return (
     <div className="flex flex-col h-full items-center justify-center p-4">
@@ -32,7 +78,7 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
           </div>
           
           <div className="grid gap-4 mt-4">
-             {mockAssignments.map(a => (
+             {assignmentsList.map(a => (
                <div key={a.id} className={`p-5 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-all hover:bg-slate-800/50 ${a.status === 'completed' ? 'bg-slate-800/30 border-slate-700/50 opacity-70' : 'bg-slate-800 border-slate-600'}`}>
                  <div className="flex gap-4">
                    <div className="mt-1 flex-shrink-0">
@@ -106,6 +152,8 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
               ) : (
                 <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col h-48">
                   <textarea 
+                    value={answerContent}
+                    onChange={(e) => setAnswerContent(e.target.value)}
                     className="w-full h-full bg-transparent resize-none text-slate-200 focus:outline-none placeholder:text-slate-600"
                     placeholder="Type your answer here..."
                   ></textarea>
@@ -114,14 +162,20 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
            </div>
            
            <button 
-              onClick={() => {
-                alert("Assignment submitted successfully!");
-                setActiveAssignment(null);
-              }}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 disabled:opacity-50"
            >
-             <CheckCircle2 className="w-5 h-5" />
-             {isUrdu ? 'جمع کروائیں' : 'Submit Assignment'}
+             {isSubmitting ? (
+               <>
+                 <Loader2 className="w-5 h-5 animate-spin" /> Submitting...
+               </>
+             ) : (
+               <>
+                 <CheckCircle2 className="w-5 h-5" />
+                 {isUrdu ? 'جمع کروائیں' : 'Submit Assignment'}
+               </>
+             )}
            </button>
          </div>
       )}

@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { HeartHandshake, TrendingUp, Award, Calendar, FileText, Download } from 'lucide-react';
+import { HeartHandshake, TrendingUp, Award, Calendar, FileText, Download, CheckCircle2 } from 'lucide-react';
 
-const mockChartData = [
+const initialChartData = [
   { week: 'W1', score: 65 },
   { week: 'W2', score: 68 },
   { week: 'W3', score: 74 },
@@ -10,6 +11,21 @@ const mockChartData = [
 
 export default function ParentDashboard({ language }: { language: "EN" | "UR" }) {
   const isUrdu = language === "UR";
+
+  const [parentData, setParentData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/parent-dashboard?student_id=00000000-0000-0000-0000-000000000000')
+      .then(res => res.json())
+      .then(data => {
+        if (data) setParentData(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const chartData = parentData?.trendData || initialChartData;
+  const grade = parentData?.grade || 'A-';
+  const attendanceRate = parentData?.attendanceRate != null ? `${parentData.attendanceRate}%` : '98%';
 
   return (
     <div className="flex flex-col gap-6 h-full w-full overflow-y-auto scrollbar-hide">
@@ -43,8 +59,8 @@ export default function ParentDashboard({ language }: { language: "EN" | "UR" })
            <div className={`flex-1 flex flex-col gap-4 text-slate-300 leading-relaxed ${isUrdu ? 'text-right font-urdu text-lg' : ''}`}>
              <p>
                {isUrdu 
-                 ? 'علی نے اس ہفتے پڑھائی میں شاندار بہتری دکھائی ہے۔ خاص طور پر فزکس میں ان کی کارکردگی بہتر ہوئی ہے جہاں انہوں نے پچھلے ہفتے کی نسبت 15 فیصد زیادہ نمبر حاصل کیے۔' 
-                 : 'Ali has shown excellent improvement in his studies this week. His performance in Physics has particularly improved, scoring 15% higher than last week.'}
+                 ? (parentData?.summaryUr || 'علی نے اس ہفتے پڑھائی میں شاندار بہتری دکھائی ہے۔ خاص طور پر فزکس میں ان کی کارکردگی بہتر ہوئی ہے جہاں انہوں نے پچھلے ہفتے کی نسبت 15 فیصد زیادہ نمبر حاصل کیے۔')
+                 : (parentData?.summaryEn || 'Ali has shown excellent improvement in his studies this week. His performance in Physics has particularly improved, scoring 15% higher than last week.')}
              </p>
              <p>
                {isUrdu 
@@ -73,7 +89,7 @@ export default function ParentDashboard({ language }: { language: "EN" | "UR" })
                   <TrendingUp className="w-4 h-4" /> {isUrdu ? 'اوسط درجہ' : 'Avg. Grade'}
                 </div>
                 <div className="text-3xl font-bold text-white text-center sm:text-left">
-                  A-
+                  {grade}
                 </div>
              </div>
              <div className="glass-card p-5">
@@ -81,7 +97,7 @@ export default function ParentDashboard({ language }: { language: "EN" | "UR" })
                   <Calendar className="w-4 h-4" /> {isUrdu ? 'حاضری' : 'Attendance'}
                 </div>
                 <div className="text-3xl font-bold text-white text-center sm:text-left">
-                  98%
+                  {attendanceRate}
                 </div>
              </div>
            </div>
@@ -94,7 +110,7 @@ export default function ParentDashboard({ language }: { language: "EN" | "UR" })
              </h3>
              <div className="w-full h-[150px]">
                <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={mockChartData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
+                 <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                    <XAxis dataKey="week" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
