@@ -1,31 +1,59 @@
-import { useState } from 'react';
-import { Layers, ArrowRight, ArrowLeft, RefreshCcw, Rotate3D } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Layers, ArrowRight, ArrowLeft, RefreshCcw, Rotate3D, Check, Star } from 'lucide-react';
 
-const mockFlashcards = [
-  { id: 1, front_en: "What is Newton's First Law?", back_en: "An object remains at rest or in uniform motion unless acted upon by a net external force.", front_ur: "نیوٹن کا پہلا قانون کیا ہے؟", back_ur: "کوئی جسم اس وقت تک آرام یا یکساں حرکت کی حالت میں رہتا ہے جب تک اس پر کوئی بیرونی قوت عمل نہ کرے۔" },
-  { id: 2, front_en: "Define Inertia", back_en: "The tendency of an object to resist changes in its state of motion.", front_ur: "انرشیا (Inertia) کی تعریف کریں", back_ur: "کسی جسم کی وہ خاصیت جس کی وجہ سے وہ اپنی آرام یا حرکت کی حالت میں تبدیلی کی مخالفت کرے۔" },
-  { id: 3, front_en: "Formula for Force", back_en: "F = ma (Force = mass × acceleration)", front_ur: "قوت (Force) کا فارمولا", back_ur: "F = ma (قوت = کمیت × اسراع)" }
+const defaultFlashcards = [
+  { id: '1', front_en: "What is Newton's First Law?", back_en: "An object remains at rest or in uniform motion unless acted upon by a net external force.", front_ur: "نیوٹن کا پہلا قانون کیا ہے؟", back_ur: "کوئی جسم اس وقت تک آرام یا یکساں حرکت کی حالت میں رہتا ہے جب تک اس پر کوئی بیرونی قوت عمل نہ کرے۔", mastered: false },
+  { id: '2', front_en: "Define Inertia", back_en: "The tendency of an object to resist changes in its state of motion.", front_ur: "انرشیا (Inertia) کی تعریف کریں", back_ur: "کسی جسم کی وہ خاصیت جس کی وجہ سے وہ اپنی آرام یا حرکت کی حالت میں تبدیلی کی مخالفت کرے۔", mastered: false },
+  { id: '3', front_en: "Formula for Force", back_en: "F = ma (Force = mass × acceleration)", front_ur: "قوت (Force) کا فارمولا", back_ur: "F = ma (قوت = کمیت × اسراع)", mastered: true }
 ];
 
 export default function FlashcardsViewer({ language }: { language: "EN" | "UR" }) {
   const isUrdu = language === "UR";
   
+  const [cards, setCards] = useState<any[]>(defaultFlashcards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const card = mockFlashcards[currentIndex];
+  useEffect(() => {
+    fetch('/api/flashcards')
+      .then(res => res.json())
+      .then(data => {
+        if (data.flashcards && data.flashcards.length > 0) {
+          setCards(data.flashcards);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const card = cards[currentIndex] || defaultFlashcards[0];
+
+  const toggleMastered = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedStatus = !card.mastered;
+    setCards(prev => prev.map((c, i) => i === currentIndex ? { ...c, mastered: updatedStatus } : c));
+
+    try {
+      if (String(card.id).length > 10) {
+        await fetch('/api/flashcards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: card.id, mastered: updatedStatus })
+        });
+      }
+    } catch {}
+  };
 
   const handleNext = () => {
     setIsFlipped(false);
     setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % mockFlashcards.length);
+      setCurrentIndex((prev) => (prev + 1) % cards.length);
     }, 150);
   };
 
   const handlePrev = () => {
     setIsFlipped(false);
     setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + mockFlashcards.length) % mockFlashcards.length);
+      setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
     }, 150);
   };
 
@@ -43,8 +71,17 @@ export default function FlashcardsViewer({ language }: { language: "EN" | "UR" }
                <p className="text-sm text-slate-400">{isUrdu ? 'اہم تصورات کو دہرائیں' : 'Spaced repetition for key concepts'}</p>
              </div>
            </div>
-           <div className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono text-sm">
-             {currentIndex + 1} / {mockFlashcards.length}
+           <div className="flex items-center gap-3">
+             <button 
+               onClick={toggleMastered}
+               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${card.mastered ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+             >
+               <Star className={`w-3.5 h-3.5 ${card.mastered ? 'fill-emerald-400 text-emerald-400' : ''}`} />
+               {card.mastered ? 'Mastered' : 'Mark Mastered'}
+             </button>
+             <div className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono text-sm">
+               {currentIndex + 1} / {cards.length}
+             </div>
            </div>
         </div>
 

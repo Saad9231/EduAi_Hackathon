@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { callTutorAI } from '../../lib/serverAI';
+import { requireUser } from '../../lib/supabase/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

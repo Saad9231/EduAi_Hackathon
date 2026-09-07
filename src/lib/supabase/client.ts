@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
-import { createBrowserClient } from '@supabase/ssr/dist/module/createBrowserClient'
+import { createBrowserClient } from '@supabase/ssr'
 
 export const createClient = () =>
   createBrowserClient(
