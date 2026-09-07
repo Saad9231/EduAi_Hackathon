@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -7,9 +8,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { student_id } = req.query;
+    const user = await requireRole(req, res, ['parent']);
+    if (!user) return;
+    const { data: link } = await supabase
+      .from('parent_child_links')
+      .select('student_id')
+      .eq('parent_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (!link) return res.status(404).json({ error: 'No student is linked to this parent account' });
 
-    const studentId = (student_id as string) || '00000000-0000-0000-0000-000000000000';
+    const studentId = link.student_id;
 
     // 1. Fetch attendance records
     const { data: attendanceData } = await supabase

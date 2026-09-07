@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BookMarked, UploadCloud, CheckCircle2, Clock, Play, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import toast from 'react-hot-toast';
 
 const defaultAssignments = [
   { id: '1', title: 'Physics: Force and Motion MCQ', subject: 'Physics', due: 'Tomorrow, 11:59 PM', status: 'pending', type: 'quiz' },
@@ -38,6 +40,29 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
 
   const handleSubmit = async () => {
     if (!assignment) return;
+
+    const confirm = await Swal.fire({
+      title: isUrdu ? 'اسائنمنٹ جمع کروائیں؟' : 'Submit Assignment?',
+      text: isUrdu
+        ? 'ایک بار جمع کرنے کے بعد تبدیلی ممکن نہیں ہو گی۔'
+        : 'Once submitted, you cannot make changes.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: isUrdu ? 'ہاں، جمع کروائیں' : 'Yes, Submit',
+      cancelButtonText: isUrdu ? 'واپس جائیں' : 'Cancel',
+      background: '#0f172a',
+      color: '#f1f5f9',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#475569',
+      customClass: {
+        popup: 'swal-dark-popup',
+        confirmButton: 'swal-confirm-btn',
+        cancelButton: 'swal-cancel-btn',
+      },
+    });
+
+    if (!confirm.isConfirmed) return;
+
     setIsSubmitting(true);
 
     try {
@@ -45,8 +70,7 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assignment_id: String(assignment.id).length > 10 ? assignment.id : '00000000-0000-0000-0000-000000000000',
-          student_id: '00000000-0000-0000-0000-000000000000',
+          assignment_id: assignment.id,
           content: answerContent || 'Submitted assignment via portal',
           status: 'submitted'
         })
@@ -57,7 +81,10 @@ export default function AssignmentViewer({ language }: { language: "EN" | "UR" }
     setIsSubmitting(false);
     setActiveAssignment(null);
     setAnswerContent('');
-    alert(isUrdu ? "اسائنمنٹ کامیابی سے جمع ہو گئی ہے!" : "Assignment submitted successfully!");
+    toast.success(
+      isUrdu ? 'اسائنمنٹ کامیابی سے جمع ہو گئی ہے!' : 'Assignment submitted successfully!',
+      { icon: '🎉', duration: 4000 }
+    );
   };
 
   return (

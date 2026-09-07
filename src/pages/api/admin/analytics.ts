@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '../../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const user = await requireRole(req, res, ['admin']);
+  if (!user) return;
+
   if (req.method === 'GET') {
     // 1. Total users count
     const { count: userCount } = await supabase
@@ -18,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('role');
 
     const roleBreakdown = { student: 0, teacher: 0, parent: 0, admin: 0 };
-    profiles?.forEach((p: any) => {
+    profiles?.forEach((p: { role: string }) => {
       if (p.role in roleBreakdown) {
         roleBreakdown[p.role as keyof typeof roleBreakdown]++;
       }

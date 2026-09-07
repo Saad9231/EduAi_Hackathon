@@ -15,7 +15,7 @@ export default function ParentDashboard({ language }: { language: "EN" | "UR" })
   const [parentData, setParentData] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/parent-dashboard?student_id=00000000-0000-0000-0000-000000000000')
+    fetch('/api/parent-dashboard')
       .then(res => res.json())
       .then(data => {
         if (data) setParentData(data);

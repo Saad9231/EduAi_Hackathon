@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Library, Download, Search, BookOpen, FileText, CheckCircle2 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import toast from 'react-hot-toast';
 
 const defaultBooks = [
   { id: '1', title: 'Physics (Class 10)', board: 'PTB', size: '15 MB', type: 'book', file_url: '#' },
@@ -53,7 +55,32 @@ export default function DigitalLibrary({ language }: { language: "EN" | "UR" }) 
     setTimeout(() => {
       setDownloadedId(null);
     }, 2500);
-    alert(isUrdu ? `"${title}" آف لائن استعمال کے لیے کامیابی سے ڈاؤن لوڈ ہو گئی۔` : `"${title}" downloaded successfully for offline study!`);
+
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 1800)),
+      {
+        loading: isUrdu ? `"${title}" ڈاؤن لوڈ ہو رہی ہے...` : `Downloading "${title}"...`,
+        success: () => {
+          Swal.fire({
+            title: isUrdu ? 'ڈاؤن لوڈ مکمل!' : 'Download Complete!',
+            html: isUrdu
+              ? `<p style="color:#94a3b8;font-size:14px;">"${title}"<br/>آف لائن پڑھنے کے لیے محفوظ ہو گئی۔</p>`
+              : `<p style="color:#94a3b8;font-size:14px;"><strong style="color:#f1f5f9">${title}</strong><br/>has been saved for offline study.</p>`,
+            icon: 'success',
+            confirmButtonText: isUrdu ? 'ٹھیک ہے' : 'Great!',
+            background: '#0f172a',
+            color: '#f1f5f9',
+            confirmButtonColor: '#f59e0b',
+            iconColor: '#10b981',
+            customClass: { popup: 'swal-dark-popup' },
+            timer: 3000,
+            timerProgressBar: true,
+          });
+          return isUrdu ? 'ڈاؤن لوڈ مکمل ہو گئی!' : 'Download complete!';
+        },
+        error: isUrdu ? 'ڈاؤن لوڈ ناکام' : 'Download failed',
+      }
+    );
   };
 
   return (

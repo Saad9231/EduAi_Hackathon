@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Bot, Send, Mic, BookText, Settings2, Sparkles, BrainCircuit, Image as ImageIcon, Paperclip } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function AITutorChat({ language }: { language: "EN" | "UR" }) {
   const isUrdu = language === "UR";
@@ -131,7 +132,10 @@ export default function AITutorChat({ language }: { language: "EN" | "UR" }) {
         {/* Chat Input */}
         <div className="p-4 bg-slate-800/30 border-t border-slate-700/50">
           <div className="relative flex items-center">
-            <input type="file" id="file-upload" className="hidden" accept="image/*" onChange={() => alert("Image uploaded for AI Doubt Solving!")} />
+            <input type="file" id="file-upload" className="hidden" accept="image/*" onChange={() => toast.success(
+              isUrdu ? 'تصویر اپ لوڈ ہو گئی — AI حل کر رہا ہے!' : 'Image uploaded — AI is solving your doubt!',
+              { icon: '🖼️', duration: 3500 }
+            )} />
             <label htmlFor="file-upload" className="absolute left-3 p-2 text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">
               <Paperclip className="w-5 h-5" />
             </label>

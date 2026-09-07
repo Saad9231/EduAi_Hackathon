@@ -13,6 +13,7 @@ import DigitalLibrary from "@/components/DigitalLibrary";
 import AdminDashboard from "@/components/AdminDashboard";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import ParentDashboard from "@/components/ParentDashboard";
+import { createClient } from "@/lib/supabase/client";
 import { LayoutDashboard, MessageSquare, BookOpenCheck, Users, HeartHandshake, LogOut, FileText, ClipboardCheck, Layers, Library, Shield } from "lucide-react";
 
 export default function Home() {
@@ -22,16 +23,30 @@ export default function Home() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedRole = localStorage.getItem("eduai_role");
-    if (!savedRole) {
-      router.push("/auth");
-      return;
-    }
-    setRole(savedRole);
-    if (savedRole === "teacher") setActiveTab("teacher");
-    else if (savedRole === "parent") setActiveTab("parent");
-    else if (savedRole === "admin") setActiveTab("admin");
-    else setActiveTab("student");
+    let mounted = true;
+    const loadSession = async () => {
+      const supabase = createClient();
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        router.push("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+      const currentRole = profile?.role;
+      if (!mounted || !currentRole) {
+        router.push("/auth");
+        return;
+      }
+      setRole(currentRole);
+      setActiveTab(currentRole === "teacher" || currentRole === "parent" || currentRole === "admin" ? currentRole : "student");
+    };
+    void loadSession();
+    return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -43,8 +58,7 @@ export default function Home() {
 
 
   const handleLogout = () => {
-    localStorage.removeItem("eduai_role");
-    router.push("/auth");
+    void createClient().auth.signOut().finally(() => router.push("/auth"));
   };
 
   const allTabs = [

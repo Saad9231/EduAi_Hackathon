@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '../../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const user = await requireRole(req, res, ['admin']);
+  if (!user) return;
+
   if (req.method === 'GET') {
     const { data, error } = await supabase
       .from('system_settings')
@@ -19,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       emergency_halt: false
     };
 
-    data?.forEach((s: any) => {
+    data?.forEach((s: { key: string; value: { enabled?: boolean } | null }) => {
       if (s.value && typeof s.value.enabled === 'boolean') {
         settingsMap[s.key] = s.value.enabled;
       }
@@ -49,6 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Also write an audit log
     await supabase.from('audit_logs').insert([{
+      actor_id: user.id,
       action: `UPDATE_SETTING_${key.toUpperCase()}`,
       details: { enabled, timestamp: new Date().toISOString() }
     }]);

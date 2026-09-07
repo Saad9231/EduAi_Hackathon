@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, Users, HeartHandshake, ArrowRight, Bot, Sparkles, Mail, Lock, User, MoveLeft, Shield } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createClient } from "@/lib/supabase/client";
 
 type Role = "student" | "teacher" | "parent" | "admin" | null;
 type AuthMode = "role-select" | "signup" | "login";
@@ -20,6 +21,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   const roles = [
     {
@@ -66,17 +68,45 @@ export default function AuthPage() {
     }
   };
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      // For login, if no role was selected, default to student for the prototype
-      const finalRole = selectedRole || "student";
-      localStorage.setItem("eduai_role", finalRole);
-      router.push("/");
-    }, 1200);
+    setAuthError("");
+
+    const supabase = createClient();
+    const result = mode === "signup"
+      ? await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name, role: selectedRole } },
+        })
+      : await supabase.auth.signInWithPassword({ email, password });
+
+    if (result.error) {
+      setAuthError(result.error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (mode === "signup" && result.data.user && selectedRole) {
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: result.data.user.id,
+        full_name: name,
+        role: selectedRole,
+      });
+      if (profileError) {
+        setAuthError(profileError.message);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    if (!result.data.session) {
+      setAuthError("Check your email to confirm your account before signing in.");
+      setIsLoading(false);
+      return;
+    }
+    router.push("/");
   };
 
   const handleGoogleSignIn = async () => {
@@ -202,6 +232,7 @@ export default function AuthPage() {
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white mb-2">Create an account</h2>
                 <p className="text-slate-400 text-sm">Fill in your details to get started with EduAI.</p>
+                {authError && <p className="text-red-400 text-sm mt-3">{authError}</p>}
               </div>
 
               <form onSubmit={handleAuthSubmit} className="flex flex-col gap-5">
@@ -276,6 +307,7 @@ export default function AuthPage() {
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
                 <p className="text-slate-400 text-sm">Enter your credentials to access your dashboard.</p>
+                {authError && <p className="text-red-400 text-sm mt-3">{authError}</p>}
               </div>
 
               <form onSubmit={handleAuthSubmit} className="flex flex-col gap-5">
