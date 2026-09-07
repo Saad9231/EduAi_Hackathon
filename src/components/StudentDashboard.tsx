@@ -50,7 +50,7 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
     // In a full app, this comes from Supabase Auth session.
     const fetchDashboard = async () => {
       try {
-        const res = await fetch('/api/dashboard?student_id=00000000-0000-0000-0000-000000000000');
+        const res = await fetch('/api/dashboard');
         if (res.ok) {
           const data = await res.json();
           setDashboardData(data.dashboard);
@@ -64,7 +64,7 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
     // Fetch study plan
     const fetchStudyPlan = async () => {
       try {
-        const res = await fetch('/api/study-planner?student_id=00000000-0000-0000-0000-000000000000');
+        const res = await fetch('/api/study-planner');
         if (res.ok) {
           const data = await res.json();
           if (data.plan?.tasks && Array.isArray(data.plan.tasks) && data.plan.tasks.length > 0) {
@@ -92,7 +92,6 @@ export default function StudentDashboard({ language }: { language: "EN" | "UR" }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          student_id: '00000000-0000-0000-0000-000000000000',
           tasks: newTasks
         })
       });

@@ -77,3 +77,50 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* ── SweetAlert2 Dark Theme Overrides ───────────────────────── */
+.swal-dark-popup {
+  background: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.15) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(14, 165, 233, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.swal2-title {
+  color: #f1f5f9 !important;
+  font-weight: 700 !important;
+}
+
+.swal2-html-container {
+  color: #94a3b8 !important;
+}
+
+.swal-confirm-btn,
+.swal2-confirm {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+}
+
+.swal-cancel-btn,
+.swal2-cancel {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+}
+
+.swal2-timer-progress-bar {
+  background: rgba(16, 185, 129, 0.6) !important;
+}
+
+.swal2-icon.swal2-success {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.swal2-icon.swal2-question {
+  border-color: rgba(14, 165, 233, 0.4) !important;
+  color: #38bdf8 !important;
+}

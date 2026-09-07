@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const user = await requireRole(req, res, ['teacher']);
+  if (!user) return;
+
   if (req.method === 'GET') {
     const { date, student_id } = req.query;
 
@@ -28,18 +32,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    const { records, marked_by } = req.body;
+    const { records } = req.body;
 
     // Supports single record or batch of records: [{ student_id, status, date? }]
     if (!records || !Array.isArray(records) || records.length === 0) {
       return res.status(400).json({ error: 'records array is required' });
     }
 
-    const rows = records.map((r: any) => ({
+    const rows = records.map((r: { student_id: string; status: string; date?: string }) => ({
       student_id: r.student_id,
       status: r.status,
       date: r.date || new Date().toISOString().split('T')[0],
-      marked_by: marked_by || null,
+      marked_by: user.id,
       created_at: new Date().toISOString()
     }));
 

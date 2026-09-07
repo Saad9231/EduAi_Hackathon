@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Nastaliq_Urdu } from "next/font/google";
 import { config } from "@/lib/config";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -118,6 +119,37 @@ export default function RootLayout({
       <body className="antialiased min-h-screen bg-slate-950 text-slate-50 selection:bg-sky-600/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/20 via-slate-950 to-slate-950 -z-10" />
         {children}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: "#1e293b",
+              color: "#f1f5f9",
+              border: "1px solid rgba(148,163,184,0.15)",
+              borderRadius: "12px",
+              fontSize: "14px",
+              fontWeight: "500",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            },
+            success: {
+              iconTheme: { primary: "#10b981", secondary: "#1e293b" },
+              style: {
+                background: "#1e293b",
+                border: "1px solid rgba(16,185,129,0.3)",
+                boxShadow: "0 8px 32px rgba(16,185,129,0.15)",
+              },
+            },
+            error: {
+              iconTheme: { primary: "#ef4444", secondary: "#1e293b" },
+              style: {
+                background: "#1e293b",
+                border: "1px solid rgba(239,68,68,0.3)",
+                boxShadow: "0 8px 32px rgba(239,68,68,0.15)",
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );

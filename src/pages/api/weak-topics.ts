@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const user = await requireRole(req, res, ['teacher']);
+  if (!user) return;
+
   if (req.method === 'GET') {
     const { student_id } = req.query;
 
@@ -24,8 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const alerts: { type: 'critical' | 'warning'; message: string }[] = [];
     const weakTopicCounts: Record<string, number> = {};
 
-    progressList?.forEach((item: any) => {
-      const studentName = item.profiles?.full_name || 'Student';
+    progressList?.forEach((item: { profiles?: { full_name?: string }[]; mastery_percentage: number | null; subject: string; weak_topics: unknown }) => {
+      const studentName = item.profiles?.[0]?.full_name || 'Student';
       if (item.mastery_percentage !== null && item.mastery_percentage < 50) {
         alerts.push({
           type: 'critical',

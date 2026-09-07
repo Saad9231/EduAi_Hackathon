@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireUser } from '../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -7,8 +8,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { student_id } = req.query;
-    if (!student_id) return res.status(400).json({ error: 'student_id is required' });
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const student_id = user.id;
 
     // Fetch progress
     const { data: progress, error: progressError } = await supabase

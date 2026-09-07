@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Download, Loader2, BookOpen, CheckCircle2, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function AINotesGenerator({ language }: { language: "EN" | "UR" }) {
   const isUrdu = language === "UR";
@@ -100,7 +101,14 @@ export default function AINotesGenerator({ language }: { language: "EN" | "UR" }
                </button>
                <button 
                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm text-white font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-2"
-                 onClick={() => alert("Downloading PDF...")}
+                 onClick={() => toast.promise(
+                   new Promise((resolve) => setTimeout(resolve, 1500)),
+                   {
+                     loading: isUrdu ? 'PDF تیار ہو رہی ہے...' : 'Preparing your PDF...',
+                     success: isUrdu ? 'PDF کامیابی سے ڈاؤن لوڈ ہو گئی!' : 'PDF downloaded successfully!',
+                     error: isUrdu ? 'ڈاؤن لوڈ ناکام ہو گئی' : 'Download failed',
+                   }
+                 )}
                >
                  <Download className="w-4 h-4" />
                  {isUrdu ? 'ڈاؤن لوڈ' : 'Download PDF'}

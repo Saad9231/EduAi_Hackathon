@@ -68,7 +68,7 @@ export default function TeacherDashboard({ language }: { language: "EN" | "UR" }
     setAttendanceNotice('');
     try {
       const records = attendanceData.map(s => ({
-        student_id: s.id.length > 10 ? s.id : '00000000-0000-0000-0000-000000000000',
+        student_id: s.id,
         status: s.present ? 'present' : 'absent'
       }));
 

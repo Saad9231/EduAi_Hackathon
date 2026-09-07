@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireUser, requireRole } from '../../lib/supabase/api';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -7,6 +8,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
+    const user = await requireUser(req, res);
+    if (!user) return;
     const { teacher_id, subject } = req.query;
 
     let query = supabase
@@ -28,7 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    const { teacher_id, title, subject, description, due_date, type } = req.body;
+    const user = await requireRole(req, res, ['teacher']);
+    if (!user) return;
+    const { title, subject, description, due_date, type } = req.body;
 
     if (!title || !subject || !type) {
       return res.status(400).json({ error: 'title, subject, and type are required' });
@@ -36,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data, error } = await supabase
       .from('assignments')
-      .insert([{ teacher_id, title, subject, description, due_date, type }])
+      .insert([{ teacher_id: user.id, title, subject, description, due_date, type }])
       .select()
       .single();
 
