@@ -27,6 +27,14 @@ export default function TeacherDashboard({ language }: { language: "EN" | "UR" }
   // Weak Topics & Alerts State
   const [alerts, setAlerts] = useState<{ type: 'critical' | 'warning'; message: string }[]>([]);
 
+  // Library Upload State
+  const [isUploadingLibrary, setIsUploadingLibrary] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [libTitle, setLibTitle] = useState('');
+  const [libBoard, setLibBoard] = useState('PTB');
+  const [libType, setLibType] = useState('book');
+  const [isLibraryUploading, setIsLibraryUploading] = useState(false);
+
   useEffect(() => {
     // 1. Fetch Weak Topics / Alerts
     fetch('/api/weak-topics')
@@ -121,6 +129,52 @@ export default function TeacherDashboard({ language }: { language: "EN" | "UR" }
     setIsCreatingAssignment(false);
   };
 
+  const handleLibraryUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile || !libTitle.trim()) return;
+    
+    setIsLibraryUploading(true);
+    try {
+      // 1. Upload file
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      const upRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const upData = await upRes.json();
+      
+      if (!upRes.ok || !upData.success) throw new Error(upData.error);
+      
+      // 2. Save to DB
+      const dbRes = await fetch('/api/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: libTitle,
+          board: libBoard,
+          type: libType,
+          file_url: upData.file_url,
+          size: (uploadFile.size / (1024 * 1024)).toFixed(1) + ' MB'
+        })
+      });
+      
+      if (dbRes.ok) {
+        alert(isUrdu ? "کامیابی کے ساتھ اپلوڈ ہو گیا!" : "Uploaded successfully!");
+      } else {
+        alert(isUrdu ? "ڈیٹا بیس میں محفوظ کرنے میں ناکامی" : "Failed to save to database");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Upload failed.");
+    } finally {
+      setIsLibraryUploading(false);
+      setIsUploadingLibrary(false);
+      setUploadFile(null);
+      setLibTitle('');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 h-full w-full overflow-y-auto scrollbar-hide">
       
@@ -182,11 +236,14 @@ export default function TeacherDashboard({ language }: { language: "EN" | "UR" }
                  <UploadCloud className="w-5 h-5 text-purple-400" />
                  Upload Syllabus / Books
                </h3>
-               <div className="border-2 border-dashed border-slate-700/50 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-800/30 hover:border-sky-500/50 transition-colors cursor-pointer group">
+               <div 
+                 onClick={() => setIsUploadingLibrary(true)}
+                 className="border-2 border-dashed border-slate-700/50 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-800/30 hover:border-sky-500/50 transition-colors cursor-pointer group"
+               >
                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3 group-hover:bg-sky-500/20 transition-colors">
                    <UploadCloud className="w-6 h-6 text-slate-400 group-hover:text-sky-400" />
                  </div>
-                 <p className="text-sm text-slate-300 font-medium mb-1">Click or drag files here</p>
+                 <p className="text-sm text-slate-300 font-medium mb-1">Click to upload syllabus or books</p>
                </div>
             </div>
           </div>
@@ -242,6 +299,91 @@ export default function TeacherDashboard({ language }: { language: "EN" | "UR" }
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Library Upload Modal */}
+      {isUploadingLibrary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setIsUploadingLibrary(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <UploadCloud className="w-5 h-5 text-sky-400" /> Upload Library Resource
+            </h3>
+
+            <form onSubmit={handleLibraryUpload} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase">Resource Title</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Physics Class 10 Notes" 
+                  value={libTitle}
+                  onChange={(e) => setLibTitle(e.target.value)}
+                  className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-sky-500 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase">Board</label>
+                  <select 
+                    value={libBoard}
+                    onChange={(e) => setLibBoard(e.target.value)}
+                    className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-sky-500 text-sm"
+                  >
+                    <option value="PTB">PTB</option>
+                    <option value="FBISE">FBISE</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase">Type</label>
+                  <select 
+                    value={libType}
+                    onChange={(e) => setLibType(e.target.value)}
+                    className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-sky-500 text-sm"
+                  >
+                    <option value="book">Book</option>
+                    <option value="resource">Past Paper / Resource</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase">File</label>
+                <input 
+                  type="file" 
+                  required
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none text-sm"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button 
+                  type="button"
+                  onClick={() => setIsUploadingLibrary(false)}
+                  className="flex-1 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isLibraryUploading}
+                  className="flex-1 py-2.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-bold text-sm transition-colors shadow-[0_0_15px_rgba(14,165,233,0.3)] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isLibraryUploading ? <><Loader2 className="w-4 h-4 animate-spin"/> Uploading</> : "Upload File"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

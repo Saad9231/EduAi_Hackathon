@@ -42,5 +42,5 @@ export const featureFlags = {
   showOfflineStatus: true,
 
   /** Enable mock authentication (no real backend) */
-  useMockAuth: true,
+  useMockAuth: false,
 } as const;
