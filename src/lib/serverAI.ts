@@ -11,155 +11,186 @@ export type TutorResponse = {
 };
 
 /**
- * Call OpenAI's Chat Completions API using the server-side API key.
- * Requires `OPENAI_API_KEY` to be set in server environment (e.g. .env.local).
+ * Build the system prompt for educational tutoring.
  */
-export async function callTutorAI(req: TutorRequest): Promise<TutorResponse> {
-  // Prefer Gemini if configured (user provides GEMINI_API_KEY + GEMINI_API_URL)
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const geminiUrl = process.env.GEMINI_API_URL;
-  const geminiModel = process.env.GEMINI_MODEL;
-  const geminiProvider = process.env.GEMINI_PROVIDER || 'generic';
-  const geminiBearer = process.env.GEMINI_BEARER_TOKEN;
+function getSystemPrompt(language?: 'EN' | 'UR'): string {
+  const isUrdu = language === 'UR';
+  return isUrdu
+    ? `آپ ایک تعلیمی ٹیوٹر اسسٹنٹ ہیں۔ واضح، جامع قدم بہ قدم وضاحتیں فراہم کریں۔ اردو میں جواب دیں۔ Pakistan Punjab Textbook Board (PTB) اور FBISE نصاب پر توجہ دیں۔`
+    : `You are an educational tutor assistant for Pakistani students studying PTB and FBISE curricula. Provide clear, concise step-by-step explanations with a friendly, encouraging tone. Use simple English.`;
+}
 
-  if (geminiKey || geminiBearer || geminiUrl) {
-    // Support Google Generative API (Gemini) when GEMINI_PROVIDER=google
-    if (geminiProvider === 'google') {
-      const model = geminiModel || 'chat-bison@001';
-      const base = geminiUrl || `https://generativelanguage.googleapis.com/v1beta2/models/${model}:generate`;
+/**
+ * Attempt to call the Gemini API with robust error handling and retry logic.
+ * Supports gemini-2.0-flash (primary), gemini-1.5-flash (fallback).
+ */
+async function callGeminiAPI(
+  prompt: string,
+  systemPrompt: string,
+  apiKey: string,
+  modelOverride?: string
+): Promise<string> {
+  // Try models in order — fast and free-tier friendly
+  const models = modelOverride
+    ? [modelOverride]
+    : ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
 
-      // Google Generative API expects a `prompt` object. Use `text` for simple cases.
-      const body: any = {
-        prompt: { text: req.prompt },
-        temperature: 0.2,
-        maxOutputTokens: 800
-      };
+  let lastError = '';
 
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (geminiBearer) headers.Authorization = `Bearer ${geminiBearer}`;
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      // If only GEMINI_API_KEY is provided, include it as query param
-      const url = geminiBearer ? base : (base + (base.includes('?') ? '&' : '?') + `key=${encodeURIComponent(geminiKey || '')}`);
+    const body = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${systemPrompt}\n\n---\nStudent question: ${prompt}` }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+        topP: 0.95
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+      ]
+    };
+
+    try {
+      console.log(`[EduAI] Trying Gemini model: ${model}`);
 
       const res = await fetch(url, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(body)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000) // 15 second timeout
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Gemini (Google) API error ${res.status}: ${text}`);
+        const errText = await res.text();
+        console.warn(`[EduAI] Gemini ${model} returned ${res.status}: ${errText.slice(0, 200)}`);
+        lastError = `Gemini ${model} error ${res.status}: ${errText.slice(0, 200)}`;
+
+        // If it's a 400 (bad key) or 403 (forbidden), don't try other models
+        if (res.status === 400 || res.status === 403) {
+          throw new Error(lastError);
+        }
+        // For 404 or 429 or 5xx, try next model
+        continue;
       }
 
       const data = await res.json();
 
-      // Robust extraction for Google Gen AI response shapes.
-      // Possible shapes:
-      // - data.candidates[0].output[0].content[{text: '...'}]
-      // - data.candidates[0].content[0].text
-      // - data.output[0].content[0].text
-      let reply = '';
-
-      try {
-        const cand = data?.candidates?.[0];
-        if (cand) {
-          // candidate.output -> array of outputs
-          if (cand.output) {
-            // output may contain content array
-            const out0 = cand.output[0];
-            if (out0?.content) {
-              // find text blocks
-              const texts = out0.content.filter((c: any) => c.type === 'text' && c.text).map((c: any) => c.text);
-              if (texts.length) reply = texts.join('\n');
-            }
-          }
-
-          // fallback to candidate.content
-          if (!reply && cand.content && cand.content[0]?.text) {
-            reply = cand.content[0].text;
-          }
-        }
-
-        // other shapes
-        if (!reply && data?.output && data.output[0]?.content) {
-          const texts = data.output[0].content.filter((c: any) => c.type === 'text' && c.text).map((c: any) => c.text);
-          if (texts.length) reply = texts.join('\n');
-        }
-
-        if (!reply && data?.candidates?.[0]?.content?.[0]?.text) reply = data.candidates[0].content[0].text;
-        if (!reply && data?.candidates?.[0]?.output?.[0]) reply = JSON.stringify(data.candidates[0].output[0]);
-        if (!reply && data?.content) reply = String(data.content);
-        if (!reply) reply = JSON.stringify(data);
-      } catch (e) {
-        reply = JSON.stringify(data);
+      // Extract text from the standard Gemini response
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text && typeof text === 'string' && text.trim().length > 0) {
+        console.log(`[EduAI] ✅ Gemini ${model} responded successfully (${text.length} chars)`);
+        return text.trim();
       }
 
-      return { reply: String(reply), reasoning: undefined };
+      // Check if response was blocked by safety filters
+      const blockReason = data?.candidates?.[0]?.finishReason;
+      if (blockReason === 'SAFETY') {
+        console.warn(`[EduAI] Gemini ${model} blocked by safety filter`);
+        return "I'm sorry, I can't answer that question. Please try rephrasing it or ask a different educational question.";
+      }
+
+      console.warn(`[EduAI] Gemini ${model} returned unexpected shape:`, JSON.stringify(data).slice(0, 300));
+      lastError = `Gemini ${model} returned unexpected response format`;
+      continue;
+
+    } catch (e: any) {
+      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+        console.warn(`[EduAI] Gemini ${model} request timed out`);
+        lastError = `Gemini ${model} timed out after 15s`;
+        continue;
+      }
+      // Re-throw auth errors immediately
+      if (e.message?.includes('error 400') || e.message?.includes('error 403')) {
+        throw e;
+      }
+      console.warn(`[EduAI] Gemini ${model} fetch error:`, e.message);
+      lastError = e.message || 'Unknown fetch error';
+      continue;
     }
+  }
 
-    // Generic POST to a user-provided Gemini-compatible endpoint.
-    if (geminiUrl) {
-      const body: any = { prompt: req.prompt };
-      if (geminiModel) body.model = geminiModel;
+  throw new Error(`All Gemini models failed. Last error: ${lastError}`);
+}
 
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (geminiBearer) headers.Authorization = `Bearer ${geminiBearer}`;
-      else if (geminiKey) headers.Authorization = `Bearer ${geminiKey}`;
+/**
+ * Main entry point — calls Gemini (preferred) or OpenAI (fallback).
+ * Includes comprehensive error handling so the chatbot never silently fails.
+ */
+export async function callTutorAI(req: TutorRequest): Promise<TutorResponse> {
+  const systemPrompt = getSystemPrompt(req.language);
 
-      const res = await fetch(geminiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Gemini API error ${res.status}: ${text}`);
-      }
-
-      const data = await res.json();
-      const reply = data?.candidates?.[0]?.content ?? data?.output?.[0]?.content ?? data?.content ?? data?.response ?? JSON.stringify(data);
+  // ── 1. Try Gemini (preferred) ──
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const reply = await callGeminiAPI(
+        req.prompt,
+        systemPrompt,
+        geminiKey,
+        process.env.GEMINI_MODEL || undefined
+      );
       return { reply, reasoning: undefined };
+    } catch (e: any) {
+      console.error(`[EduAI] Gemini pipeline failed:`, e.message);
+      // Fall through to OpenAI if available
     }
   }
 
-  // Fallback: OpenAI
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    throw new Error('Missing server-side OPENAI_API_KEY environment variable and no Gemini config found');
+  // ── 2. Try OpenAI (fallback) ──
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    try {
+      const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: req.prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 1024
+        }),
+        signal: AbortSignal.timeout(20000)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`OpenAI API error ${res.status}: ${text.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const reply = data?.choices?.[0]?.message?.content ?? '';
+      return { reply, reasoning: undefined };
+    } catch (e: any) {
+      console.error(`[EduAI] OpenAI pipeline failed:`, e.message);
+    }
   }
 
-  const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
-
-  const systemPrompt = `You are an educational tutor assistant. Provide clear, concise step-by-step explanations and a friendly tone. If the user language is UR, prefer Urdu responses when requested.`;
-
-  const body = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: req.prompt }
-    ],
-    temperature: 0.2,
-    max_tokens: 800
-  } as any;
-
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${text}`);
+  // ── 3. No API key at all — return a helpful error ──
+  if (!geminiKey && !openaiKey) {
+    throw new Error(
+      'No AI API key configured. Add GEMINI_API_KEY or OPENAI_API_KEY to your .env.local file.'
+    );
   }
 
-  const data = await res.json();
-  const reply = data?.choices?.[0]?.message?.content ?? '';
-
-  return { reply, reasoning: undefined };
+  // ── 4. Both APIs failed — throw with context ──
+  throw new Error(
+    'AI service is temporarily unavailable. Both Gemini and OpenAI failed to respond. Please try again in a moment.'
+  );
 }

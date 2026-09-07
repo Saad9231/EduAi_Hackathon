@@ -50,8 +50,13 @@ export default function DigitalLibrary({ language }: { language: "EN" | "UR" }) 
       });
   }, [filter, searchTerm]);
 
-  const handleDownload = (id: string, title: string) => {
+  const handleDownload = (id: string, title: string, file_url: string) => {
     setDownloadedId(id);
+    
+    if (file_url && file_url !== '#') {
+      window.open(file_url, '_blank');
+    }
+    
     setTimeout(() => {
       setDownloadedId(null);
     }, 2500);
@@ -150,7 +155,7 @@ export default function DigitalLibrary({ language }: { language: "EN" | "UR" }) 
                 <p className="text-xs text-slate-400 mb-6">{book.size} • PDF Format</p>
                 
                 <button 
-                  onClick={() => handleDownload(book.id, book.title)}
+                  onClick={() => handleDownload(book.id, book.title, book.file_url)}
                   className={`w-full mt-auto py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 border ${
                     downloadedId === book.id
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
